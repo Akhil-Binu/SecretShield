@@ -1,5 +1,6 @@
 import { Finding, ScanResult, ScanProgress, SeverityLevel } from '../types';
 import { CLIENT_RULES, calculateShannonEntropy, maskSecretValue } from './clientScanner';
+import { getStoredGitHubToken } from './githubAuth';
 
 export function parseGitHubRepo(input: string): { owner: string; repo: string } | null {
   const clean = input.trim().replace(/\.git$/, '');
@@ -38,8 +39,16 @@ export async function scanGitHubRepositoryClientSide(
 
   // 1. Fetch commits list
   const limit = Math.min(maxCommits, 30);
+  const ghToken = getStoredGitHubToken();
+  const reqHeaders: Record<string, string> = {
+    'Accept': 'application/vnd.github.v3+json'
+  };
+  if (ghToken) {
+    reqHeaders['Authorization'] = `token ${ghToken}`;
+  }
+
   const commitsRes = await fetch(`https://api.github.com/repos/${owner}/${repo}/commits?per_page=${limit}`, {
-    headers: { 'Accept': 'application/vnd.github.v3+json' }
+    headers: reqHeaders
   });
 
   if (!commitsRes.ok) {
@@ -47,7 +56,9 @@ export async function scanGitHubRepositoryClientSide(
       throw new Error(`Repository "${owner}/${repo}" not found or is private.`);
     }
     if (commitsRes.status === 403) {
-      throw new Error('GitHub API rate limit exceeded. Please wait a few minutes or try scanning a code snippet.');
+      const resetHeader = commitsRes.headers.get('x-ratelimit-reset');
+      const resetTime = resetHeader ? new Date(parseInt(resetHeader, 10) * 1000).toLocaleTimeString() : 'soon';
+      throw new Error(`GitHub API rate limit exceeded (60 req/hr unauthenticated limit). Resets at ${resetTime}. Click "GitHub Token" in the top bar to unlock 5,000 requests/hour.`);
     }
     throw new Error(`GitHub API returned error ${commitsRes.status}.`);
   }
@@ -81,7 +92,7 @@ export async function scanGitHubRepositoryClientSide(
 
     try {
       const detailRes = await fetch(`https://api.github.com/repos/${owner}/${repo}/commits/${sha}`, {
-        headers: { 'Accept': 'application/vnd.github.v3+json' }
+        headers: reqHeaders
       });
 
       if (detailRes.ok) {

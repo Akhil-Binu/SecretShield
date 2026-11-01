@@ -8,6 +8,7 @@ import {
   Finding
 } from '../types';
 import { scanContentClientSide, CLIENT_RULES, maskSecretValue } from '../utils/clientScanner';
+import { getStoredGitHubToken } from '../utils/githubAuth';
 
 const API_BASE = '/api';
 
@@ -55,9 +56,28 @@ export async function getUserRepositories(username: string, max_repos: number = 
   }
 
   const cleanUser = username.trim().replace(/^@/, '');
-  const ghRes = await fetch(`https://api.github.com/users/${cleanUser}/repos?sort=updated&per_page=${max_repos}`);
+  const ghToken = getStoredGitHubToken();
+  const headers: Record<string, string> = {
+    'Accept': 'application/vnd.github.v3+json'
+  };
+  if (ghToken) {
+    headers['Authorization'] = `token ${ghToken}`;
+  }
+
+  const ghRes = await fetch(`https://api.github.com/users/${cleanUser}/repos?sort=updated&per_page=${max_repos}`, {
+    headers
+  });
+
   if (!ghRes.ok) {
-    throw new Error(`Failed to fetch public repositories for GitHub profile @${cleanUser}.`);
+    if (ghRes.status === 403) {
+      const resetHeader = ghRes.headers.get('x-ratelimit-reset');
+      const resetTime = resetHeader ? new Date(parseInt(resetHeader, 10) * 1000).toLocaleTimeString() : 'soon';
+      throw new Error(`GitHub API rate limit exceeded (60 req/hr unauthenticated limit). Resets at ${resetTime}. Click "GitHub Token" in the top bar to unlock 5,000 requests/hour.`);
+    }
+    if (ghRes.status === 404) {
+      throw new Error(`GitHub profile @${cleanUser} does not exist or has no public presence.`);
+    }
+    throw new Error(`Failed to fetch public repositories for GitHub profile @${cleanUser} (Status: ${ghRes.status}).`);
   }
   const repos = await ghRes.json();
   return repos.map((item: any) => ({

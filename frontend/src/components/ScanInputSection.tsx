@@ -11,7 +11,8 @@ import {
   ShieldCheck,
   AlertTriangle,
   UploadCloud,
-  FileCode
+  FileCode,
+  Key
 } from 'lucide-react';
 import { CLIENT_DEMO_SNIPPETS } from '../utils/sampleData';
 
@@ -19,6 +20,7 @@ interface ScanInputSectionProps {
   onStartRepoScan: (repoUrl: string, maxCommits: number) => void;
   onFetchUserRepos: (username: string) => void;
   onStartSnippetScan: (code: string, title: string, filename: string) => void;
+  onOpenGitHubToken?: () => void;
   isLoading: boolean;
 }
 
@@ -26,6 +28,7 @@ export const ScanInputSection: React.FC<ScanInputSectionProps> = ({
   onStartRepoScan,
   onFetchUserRepos,
   onStartSnippetScan,
+  onOpenGitHubToken,
   isLoading,
 }) => {
   const [activeTab, setActiveTab] = useState<'repo' | 'user' | 'snippet' | 'upload'>('snippet');
@@ -265,14 +268,22 @@ export const ScanInputSection: React.FC<ScanInputSectionProps> = ({
               </div>
             </div>
 
-            <div className="flex items-center justify-between pt-2">
-              <p className="text-xs text-slate-400">
-                Fetches all public repos via GitHub REST API to perform multi-repo secret audits.
-              </p>
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-2">
+              <div className="flex items-center space-x-2 text-xs text-slate-400">
+                <span>Hit 60 req/hr rate limit?</span>
+                <button
+                  type="button"
+                  onClick={onOpenGitHubToken}
+                  className="text-cyan-400 hover:underline flex items-center space-x-1 font-semibold"
+                >
+                  <Key className="w-3.5 h-3.5 text-cyan-400" />
+                  <span>Add GitHub Token (5,000 req/hr)</span>
+                </button>
+              </div>
               <button
                 type="submit"
                 disabled={isLoading || !username.trim()}
-                className="flex items-center space-x-2 px-6 py-2.5 rounded-xl font-semibold text-sm bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-black shadow-lg shadow-cyan-500/20 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+                className="flex items-center justify-center space-x-2 px-6 py-2.5 rounded-xl font-semibold text-sm bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-black shadow-lg shadow-cyan-500/20 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
               >
                 <Search className="w-4 h-4" />
                 <span>{isLoading ? 'Fetching Repos...' : 'Inspect User Repos'}</span>

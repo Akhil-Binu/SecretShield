@@ -1,10 +1,12 @@
 import React from 'react';
-import { ShieldAlert, ShieldCheck, FileCode, ExternalLink, Terminal, GitBranch } from 'lucide-react';
+import { ShieldAlert, ShieldCheck, FileCode, ExternalLink, Terminal, GitBranch, Key } from 'lucide-react';
 
 interface NavbarProps {
   onOpenPreCommit: () => void;
   onOpenDocs: () => void;
   onOpenRules: () => void;
+  onOpenGitHubToken: () => void;
+  hasGitHubToken: boolean;
   isBackendHealthy: boolean;
 }
 
@@ -12,6 +14,8 @@ export const Navbar: React.FC<NavbarProps> = ({
   onOpenPreCommit,
   onOpenDocs,
   onOpenRules,
+  onOpenGitHubToken,
+  hasGitHubToken,
   isBackendHealthy,
 }) => {
   return (
@@ -53,6 +57,25 @@ export const Navbar: React.FC<NavbarProps> = ({
               {isBackendHealthy ? 'API Engine Active' : 'Connecting...'}
             </span>
           </div>
+
+          {/* GitHub Token & Rate Limit button */}
+          <button
+            onClick={onOpenGitHubToken}
+            className={`flex items-center space-x-1.5 px-3 py-1.5 rounded-lg text-xs font-medium border transition-all shadow-sm ${
+              hasGitHubToken
+                ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-300 hover:bg-emerald-500/20'
+                : 'bg-shield-850 hover:bg-shield-800 text-slate-200 border-shield-700 hover:border-cyan-500/50'
+            }`}
+            title="Configure GitHub Personal Access Token (unlocks 5,000 requests/hr)"
+          >
+            <Key className={`w-3.5 h-3.5 ${hasGitHubToken ? 'text-emerald-400' : 'text-amber-400'}`} />
+            <span className="hidden sm:inline">{hasGitHubToken ? 'GitHub Token Active' : 'GitHub Token'}</span>
+            <span className={`px-1.5 py-0.2 rounded text-[10px] font-mono ${
+              hasGitHubToken ? 'bg-emerald-500/20 text-emerald-300' : 'bg-amber-500/20 text-amber-300'
+            }`}>
+              {hasGitHubToken ? '5k/hr' : '60/hr'}
+            </span>
+          </button>
 
           <button
             onClick={onOpenRules}

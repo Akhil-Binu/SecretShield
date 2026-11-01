@@ -10,6 +10,8 @@ import { PreCommitGenerator } from './components/PreCommitGenerator';
 import { UserReposModal } from './components/UserReposModal';
 import { DocsModal } from './components/DocsModal';
 import { RuleCatalogModal } from './components/RuleCatalogModal';
+import { GitHubTokenModal } from './components/GitHubTokenModal';
+import { getStoredGitHubToken } from './utils/githubAuth';
 import {
   ScanResult,
   ScanProgress,
@@ -47,6 +49,8 @@ export function App() {
   const [isPreCommitOpen, setIsPreCommitOpen] = useState(false);
   const [isDocsOpen, setIsDocsOpen] = useState(false);
   const [isRulesOpen, setIsRulesOpen] = useState(false);
+  const [isGitHubTokenOpen, setIsGitHubTokenOpen] = useState(false);
+  const [hasGitHubToken, setHasGitHubToken] = useState(Boolean(getStoredGitHubToken()));
   const [isUserReposOpen, setIsUserReposOpen] = useState(false);
   const [userRepos, setUserRepos] = useState<GitHubRepoItem[]>([]);
   const [searchedUsername, setSearchedUsername] = useState('');
@@ -164,6 +168,8 @@ export function App() {
         onOpenPreCommit={() => setIsPreCommitOpen(true)}
         onOpenDocs={() => setIsDocsOpen(true)}
         onOpenRules={() => setIsRulesOpen(true)}
+        onOpenGitHubToken={() => setIsGitHubTokenOpen(true)}
+        hasGitHubToken={hasGitHubToken}
         isBackendHealthy={isBackendHealthy}
       />
 
@@ -171,17 +177,27 @@ export function App() {
         {/* Error Notification Banner */}
         {errorMsg && (
           <div className="max-w-5xl mx-auto px-4 mt-4">
-            <div className="p-4 rounded-xl bg-red-950/40 border border-red-500/40 text-red-300 text-xs font-mono flex items-center justify-between">
+            <div className="p-4 rounded-xl bg-red-950/40 border border-red-500/40 text-red-300 text-xs font-mono flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <div className="flex items-center space-x-2">
                 <AlertCircle className="w-4 h-4 text-red-400 flex-shrink-0" />
                 <span>{errorMsg}</span>
               </div>
-              <button
-                onClick={() => setErrorMsg(null)}
-                className="text-red-400 hover:text-white text-xs underline"
-              >
-                Dismiss
-              </button>
+              <div className="flex items-center space-x-3 self-end sm:self-auto shrink-0">
+                {errorMsg.toLowerCase().includes('rate limit') && (
+                  <button
+                    onClick={() => setIsGitHubTokenOpen(true)}
+                    className="px-2.5 py-1 rounded bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-300 border border-cyan-500/40 font-semibold text-[11px] transition flex items-center space-x-1"
+                  >
+                    <span>🔑 Add GitHub Token</span>
+                  </button>
+                )}
+                <button
+                  onClick={() => setErrorMsg(null)}
+                  className="text-red-400 hover:text-white text-xs underline"
+                >
+                  Dismiss
+                </button>
+              </div>
             </div>
           </div>
         )}
@@ -191,6 +207,7 @@ export function App() {
           onStartRepoScan={handleStartRepoScan}
           onFetchUserRepos={handleFetchUserRepos}
           onStartSnippetScan={handleStartSnippetScan}
+          onOpenGitHubToken={() => setIsGitHubTokenOpen(true)}
           isLoading={isLoading}
         />
 
@@ -266,6 +283,12 @@ export function App() {
       <RuleCatalogModal
         isOpen={isRulesOpen}
         onClose={() => setIsRulesOpen(false)}
+      />
+
+      <GitHubTokenModal
+        isOpen={isGitHubTokenOpen}
+        onClose={() => setIsGitHubTokenOpen(false)}
+        onTokenUpdated={() => setHasGitHubToken(Boolean(getStoredGitHubToken()))}
       />
     </div>
   );
