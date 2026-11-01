@@ -171,6 +171,7 @@ export function App() {
         onOpenGitHubToken={() => setIsGitHubTokenOpen(true)}
         hasGitHubToken={hasGitHubToken}
         isBackendHealthy={isBackendHealthy}
+        isStaticHost={isStaticHost}
       />
 
       <main className="flex-1 pb-16">

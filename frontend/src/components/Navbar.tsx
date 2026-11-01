@@ -8,6 +8,7 @@ interface NavbarProps {
   onOpenGitHubToken: () => void;
   hasGitHubToken: boolean;
   isBackendHealthy: boolean;
+  isStaticHost?: boolean;
 }
 
 export const Navbar: React.FC<NavbarProps> = ({
@@ -17,6 +18,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   onOpenGitHubToken,
   hasGitHubToken,
   isBackendHealthy,
+  isStaticHost = false,
 }) => {
   return (
     <header className="sticky top-0 z-40 w-full border-b border-shield-700/60 bg-shield-950/80 backdrop-blur-md">
@@ -44,17 +46,24 @@ export const Navbar: React.FC<NavbarProps> = ({
 
         {/* Action Controls */}
         <div className="flex items-center space-x-2 sm:space-x-3">
-          {/* Health indicator */}
-          <div className="hidden md:flex items-center space-x-1.5 px-2.5 py-1 rounded-full bg-shield-900 border border-shield-700/60 text-xs">
+          {/* Engine indicator */}
+          <div
+            className="hidden md:flex items-center space-x-1.5 px-2.5 py-1 rounded-full bg-shield-900 border border-shield-700/60 text-xs"
+            title={
+              isBackendHealthy
+                ? 'Connected to local FastAPI backend worker'
+                : 'Running browser-side Git entropy & pattern auditor'
+            }
+          >
             <span
               className={`w-2 h-2 rounded-full ${
                 isBackendHealthy
                   ? 'bg-emerald-400 shadow-[0_0_6px_#34d399]'
-                  : 'bg-amber-400 shadow-[0_0_6px_#fbbf24]'
+                  : 'bg-cyan-400 shadow-[0_0_6px_#06b6d4]'
               }`}
             />
             <span className="text-slate-300 font-mono text-[11px]">
-              {isBackendHealthy ? 'API Engine Active' : 'Connecting...'}
+              {isBackendHealthy ? 'Backend Active' : 'Browser Engine'}
             </span>
           </div>
 
