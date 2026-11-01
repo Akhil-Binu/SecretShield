@@ -13,7 +13,7 @@ import {
 } from 'lucide-react';
 import { ScanResult } from '../types';
 import { getHealthRating } from '../utils/formatters';
-import { getExportDownloadUrl } from '../api/client';
+import { exportScanClientSide } from '../utils/exporters';
 
 interface SeverityDashboardProps {
   result: ScanResult;
@@ -48,35 +48,32 @@ export const SeverityDashboard: React.FC<SeverityDashboardProps> = ({
 
           {/* Export & Action Buttons */}
           <div className="flex flex-wrap items-center gap-2">
-            <a
-              href={getExportDownloadUrl(result.scan_id, 'json')}
-              download
+            <button
+              onClick={() => exportScanClientSide(result, 'json')}
               className="flex items-center space-x-1.5 px-3 py-1.5 rounded-lg text-xs font-mono bg-shield-850 hover:bg-shield-800 text-slate-200 border border-shield-700 transition"
               title="Download raw findings in JSON"
             >
               <Download className="w-3.5 h-3.5 text-cyan-400" />
               <span>JSON</span>
-            </a>
+            </button>
 
-            <a
-              href={getExportDownloadUrl(result.scan_id, 'csv')}
-              download
+            <button
+              onClick={() => exportScanClientSide(result, 'csv')}
               className="flex items-center space-x-1.5 px-3 py-1.5 rounded-lg text-xs font-mono bg-shield-850 hover:bg-shield-800 text-slate-200 border border-shield-700 transition"
               title="Download findings CSV for spreadsheets"
             >
               <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-400" />
               <span>CSV</span>
-            </a>
+            </button>
 
-            <a
-              href={getExportDownloadUrl(result.scan_id, 'markdown')}
-              download
+            <button
+              onClick={() => exportScanClientSide(result, 'markdown')}
               className="flex items-center space-x-1.5 px-3 py-1.5 rounded-lg text-xs font-mono bg-shield-850 hover:bg-shield-800 text-slate-200 border border-shield-700 transition"
               title="Download Executive Markdown Advisory Report"
             >
               <FileText className="w-3.5 h-3.5 text-blue-400" />
               <span>Advisory (.md)</span>
-            </a>
+            </button>
 
             <button
               onClick={onOpenPreCommit}

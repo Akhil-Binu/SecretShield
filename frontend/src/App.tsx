@@ -27,8 +27,15 @@ import { scanGitHubRepositoryClientSide } from './utils/clientGitScanner';
 import { CLIENT_DEMO_SNIPPETS } from './utils/sampleData';
 import { AlertCircle, Shield, Sparkles } from 'lucide-react';
 
+// Detect if running on static hosting without Python backend
+const isStaticHost = typeof window !== 'undefined' && (
+  window.location.hostname.includes('hf.space') ||
+  window.location.hostname.includes('huggingface.co') ||
+  window.location.hostname.includes('github.io')
+);
+
 export function App() {
-  const [isBackendHealthy, setIsBackendHealthy] = useState(true);
+  const [isBackendHealthy, setIsBackendHealthy] = useState(!isStaticHost);
   const [isLoading, setIsLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
@@ -46,22 +53,22 @@ export function App() {
   const [detailFinding, setDetailFinding] = useState<Finding | null>(null);
   const [remediationFinding, setRemediationFinding] = useState<Finding | null>(null);
 
-  // Initial load: test backend health and perform instant demo scan
+  // Initial load: run instant demo scan and test backend health if applicable
   useEffect(() => {
-    fetch('/api/health')
-      .then((res) => {
-        if (res.ok) {
-          setIsBackendHealthy(true);
-          // Run initial demo snippet so user immediately sees active dashboard
-          const demo = CLIENT_DEMO_SNIPPETS.vulnerable_fullstack_app;
-          scanSnippet(demo.content, demo.title, demo.filename)
-            .then(setScanResult)
-            .catch(console.error);
-        } else {
-          setIsBackendHealthy(false);
-        }
-      })
-      .catch(() => setIsBackendHealthy(false));
+    // 1. Instantly populate dashboard with demo findings so UI is live from second zero
+    const demo = CLIENT_DEMO_SNIPPETS.vulnerable_fullstack_app;
+    scanSnippet(demo.content, demo.title, demo.filename)
+      .then(setScanResult)
+      .catch(console.error);
+
+    // 2. Probe /api/health only when running on local / backend-capable hosts
+    if (!isStaticHost) {
+      fetch('/api/health')
+        .then((res) => setIsBackendHealthy(res.ok))
+        .catch(() => setIsBackendHealthy(false));
+    } else {
+      setIsBackendHealthy(false);
+    }
   }, []);
 
   // Handle Snippet Scan
@@ -85,8 +92,8 @@ export function App() {
     setErrorMsg(null);
     setScanResult(null);
 
-    // If backend is active, try backend asynchronous worker scan
-    if (isBackendHealthy) {
+    // If backend is active and not on a static host, try backend asynchronous worker scan
+    if (isBackendHealthy && !isStaticHost) {
       try {
         const initResp = await scanRepository(repoUrl, maxCommits);
         const scanId = initResp.scan_id;

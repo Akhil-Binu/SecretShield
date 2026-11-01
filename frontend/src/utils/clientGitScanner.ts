@@ -2,8 +2,8 @@ import { Finding, ScanResult, ScanProgress, SeverityLevel } from '../types';
 import { CLIENT_RULES, calculateShannonEntropy, maskSecretValue } from './clientScanner';
 
 export function parseGitHubRepo(input: string): { owner: string; repo: string } | null {
-  const clean = input.trim().replace(/\.git$/, '').replace(/\/$/, '');
-  const match = clean.match(/(?:github\.com\/|^)([a-zA-Z0-9_.-]+)\/([a-zA-Z0-9_.-]+)$/);
+  const clean = input.trim().replace(/\.git$/, '');
+  const match = clean.match(/(?:github\.com\/|^)([a-zA-Z0-9_.-]+)\/([a-zA-Z0-9_.-]+)(?:\/.*)?$/);
   if (match) {
     return { owner: match[1], repo: match[2] };
   }
