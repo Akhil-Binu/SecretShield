@@ -113,6 +113,25 @@ class SecretVerifier:
                             "latency_ms": latency,
                         }
 
+            elif secret_type == SecretType.VIRUSTOTAL_KEY:
+                headers = {"x-apikey": clean_token}
+                async with httpx.AsyncClient(timeout=timeout) as client:
+                    resp = await client.get("https://www.virustotal.com/api/v3/users/me", headers=headers)
+                    latency = int((time.time() - start) * 1000)
+                    if resp.status_code == 200:
+                        user_id = resp.json().get("data", {}).get("id", "Active User")
+                        return {
+                            "status": "ACTIVE",
+                            "message": f"VirusTotal API Key is LIVE for user/account: {user_id}",
+                            "latency_ms": latency,
+                        }
+                    else:
+                        return {
+                            "status": "REVOKED",
+                            "message": f"VirusTotal API Key returned HTTP {resp.status_code} (Revoked or Invalid).",
+                            "latency_ms": latency,
+                        }
+
             # Fallback for keys requiring complex signature verification (e.g. AWS SigV4, Private Keys, DBs)
             latency = int((time.time() - start) * 1000)
             return {

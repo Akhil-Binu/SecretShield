@@ -16,6 +16,8 @@ export type SecretType =
   | 'HuggingFace Access Token'
   | 'Discord Bot Token'
   | 'JSON Web Token (JWT)'
+  | 'VirusTotal API Key'
+  | 'Hexadecimal API Key / Token'
   | 'Generic High-Entropy Credential'
   | 'Hardcoded Environment Credential';
 

@@ -232,8 +232,62 @@ export const CLIENT_RULES: RuleDef[] = [
     cliCommands: [
       'huggingface-cli login --token <NEW_TOKEN>'
     ]
+  },
+  {
+    id: 'VIRUSTOTAL_API_KEY',
+    name: 'VirusTotal Threat Intelligence API Key',
+    type: 'VirusTotal API Key',
+    severity: 'CRITICAL',
+    pattern: /\b([a-f0-9]{64})\b/gi,
+    description: 'VirusTotal 64-character hexadecimal API credential allowing access to malware analysis feeds and 70+ antivirus engines.',
+    minEntropy: 3.5,
+    rotationUrl: 'https://www.virustotal.com/gui/user/apiKey',
+    instructions: [
+      'Log into your VirusTotal Community account and open User Profile -> API Key.',
+      'Click Revoke / Regenerate API Key immediately to invalidate the exposed key.',
+      'Delete the key file (e.g. VirusTotal_APIKey.txt) and add it to your .gitignore file.',
+      'Purge historical git commits containing the key using git-filter-repo.'
+    ],
+    cliCommands: [
+      "curl --request GET --url 'https://www.virustotal.com/api/v3/users/me' --header 'x-apikey: <API_KEY>'"
+    ]
+  },
+  {
+    id: 'GENERIC_HEX_KEY',
+    name: 'Generic Hexadecimal API Key / Secret',
+    type: 'Hexadecimal API Key / Token',
+    severity: 'HIGH',
+    pattern: /(?:api[_-]?key|secret[_-]?key|auth[_-]?token|access[_-]?token|client[_-]?secret|apikey|secret)\s*[:=]\s*["']?([a-f0-9]{32,64})["']?/gi,
+    description: 'Generic 32-to-64 character hexadecimal API key or authorization secret.',
+    minEntropy: 3.3,
+    rotationUrl: 'https://docs.secretshield.dev/guides/api-key-rotation',
+    instructions: [
+      'Identify the provider associated with this API key.',
+      'Revoke the secret in the provider credential management console.',
+      'Transition key configuration to environment variables or secret managers.'
+    ],
+    cliCommands: [
+      "git filter-repo --invert-paths --path <file_path> --force"
+    ]
   }
 ];
+
+export function isLikelyChecksumOrHash(line: string, filename: string): boolean {
+  const lowerFile = filename.toLowerCase();
+  // Key files, token files, env files, and virustotal files are ALWAYS audited
+  if (/(?:api[_-]?key|apikey|virustotal|secret|token|credential|\.env)/i.test(lowerFile)) {
+    return false;
+  }
+  // Lockfiles and package manifests with integrity hashes
+  if (/(?:lock|sum|sha256|checksum|md5|manifest)/i.test(lowerFile)) {
+    return true;
+  }
+  const lowerLine = line.toLowerCase();
+  if (/(?:sha256|sha-256|checksum|digest|integrity|md5|git-lfs)/i.test(lowerLine)) {
+    return true;
+  }
+  return false;
+}
 
 export function scanContentClientSide(
   content: string,
@@ -248,6 +302,10 @@ export function scanContentClientSide(
     if (line.length > 2500) return;
 
     CLIENT_RULES.forEach((rule) => {
+      if (rule.id === 'VIRUSTOTAL_API_KEY' && isLikelyChecksumOrHash(line, filename)) {
+        return;
+      }
+
       rule.pattern.lastIndex = 0;
       let match: RegExpExecArray | null;
       while ((match = rule.pattern.exec(line)) !== null) {

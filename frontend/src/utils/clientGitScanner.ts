@@ -1,5 +1,5 @@
 import { Finding, ScanResult, ScanProgress, SeverityLevel } from '../types';
-import { CLIENT_RULES, calculateShannonEntropy, maskSecretValue } from './clientScanner';
+import { CLIENT_RULES, calculateShannonEntropy, maskSecretValue, isLikelyChecksumOrHash } from './clientScanner';
 import { getStoredGitHubToken } from './githubAuth';
 
 export function parseGitHubRepo(input: string): { owner: string; repo: string } | null {
@@ -68,7 +68,95 @@ export async function scanGitHubRepositoryClientSide(
   const allFindings: Finding[] = [];
   const scannedFiles = new Set<string>();
 
-  // 2. Walk each commit and inspect patch diffs
+  // Head content cache for accurate active vs zombie classification
+  const headFileCache = new Map<string, string | null>();
+
+  async function fetchHeadContent(filepath: string): Promise<string | null> {
+    if (headFileCache.has(filepath)) {
+      return headFileCache.get(filepath)!;
+    }
+    try {
+      const res = await fetch(`https://raw.githubusercontent.com/${owner}/${repo}/HEAD/${filepath}`);
+      if (res.ok) {
+        const text = await res.text();
+        headFileCache.set(filepath, text);
+        return text;
+      }
+    } catch (e) {}
+    headFileCache.set(filepath, null);
+    return null;
+  }
+
+  // Phase 1: Inspect known high-risk credential files in repository HEAD
+  const commonKeyFiles = [
+    'VirusTotal_APIKey.txt',
+    'virustotal_apikey.txt',
+    'api_key.txt',
+    'apikey.txt',
+    'secret.txt',
+    'secrets.txt',
+    '.env',
+    '.env.local',
+    '.env.production'
+  ];
+
+  for (const kf of commonKeyFiles) {
+    const text = await fetchHeadContent(kf);
+    if (text) {
+      scannedFiles.add(kf);
+      const lines = text.split('\n');
+      lines.forEach((line, lineIdx) => {
+        const lineNum = lineIdx + 1;
+        const trimmed = line.trim();
+        if (!trimmed || trimmed.startsWith('#')) return;
+
+        CLIENT_RULES.forEach((rule) => {
+          if (rule.id === 'VIRUSTOTAL_API_KEY' && isLikelyChecksumOrHash(trimmed, kf)) {
+            return;
+          }
+          rule.pattern.lastIndex = 0;
+          let match: RegExpExecArray | null;
+          while ((match = rule.pattern.exec(trimmed)) !== null) {
+            const rawSecret = match[1] || match[0];
+            const entropy = calculateShannonEntropy(rawSecret);
+            if (entropy >= rule.minEntropy) {
+              const masked = maskSecretValue(rawSecret);
+              allFindings.push({
+                id: `head-${kf}-${rule.id}-${lineNum}`,
+                rule_id: rule.id,
+                rule_name: rule.name,
+                secret_type: rule.type,
+                severity: rule.severity,
+                description: rule.description,
+                masked_value: masked,
+                raw_preview: rawSecret.slice(0, 8) + '...',
+                entropy: entropy,
+                file_path: kf,
+                line_number: lineNum,
+                commit_sha: undefined,
+                commit_short_sha: 'HEAD',
+                commit_author: 'Current Repository State',
+                commit_date: 'Present in HEAD',
+                commit_message: `Active credential unencrypted in ${kf}`,
+                is_deleted_in_head: false,
+                active_in_head: true,
+                line_snippet: trimmed.replace(rawSecret, masked).slice(0, 180),
+                remediation_guide: {
+                  provider: rule.name.split(' ')[0],
+                  rotation_url: rule.rotationUrl,
+                  instructions: rule.instructions,
+                  cli_commands: rule.cliCommands,
+                  urgency: rule.severity
+                }
+              });
+            }
+          }
+        });
+      });
+    }
+  }
+
+  // Phase 2: Walk each commit and inspect patch diffs for zombie secrets and past leaks
   for (let i = 0; i < totalCommits; i++) {
     const c = commitsList[i];
     const sha = c.sha;
@@ -115,11 +203,15 @@ export async function scanGitHubRepositoryClientSide(
               continue;
             }
 
-            // Only audit added lines in this commit
+            // Audit added or modified lines in this commit
             if (line.startsWith('+') && !line.startsWith('+++')) {
               const codeLine = line.slice(1);
 
-              CLIENT_RULES.forEach((rule) => {
+              for (const rule of CLIENT_RULES) {
+                if (rule.id === 'VIRUSTOTAL_API_KEY' && isLikelyChecksumOrHash(codeLine, filename)) {
+                  continue;
+                }
+
                 rule.pattern.lastIndex = 0;
                 let match: RegExpExecArray | null;
                 while ((match = rule.pattern.exec(codeLine)) !== null) {
@@ -128,7 +220,11 @@ export async function scanGitHubRepositoryClientSide(
 
                   if (entropy >= rule.minEntropy) {
                     const masked = maskSecretValue(rawSecret);
-                    const isZombie = i > 0; // If committed in past commit (index > 0), likely a zombie leak
+
+                    // Verify if this specific secret value is still active in HEAD
+                    const headText = await fetchHeadContent(filename);
+                    const isActiveInHead = headText !== null && headText.includes(rawSecret);
+                    const isZombie = !isActiveInHead;
 
                     allFindings.push({
                       id: `hf-${shortSha}-${filename}-${rule.id}-${Math.random().toString(36).slice(2, 6)}`,
@@ -148,7 +244,7 @@ export async function scanGitHubRepositoryClientSide(
                       commit_date: authorDate,
                       commit_message: commitMsg,
                       is_deleted_in_head: isZombie,
-                      active_in_head: !isZombie,
+                      active_in_head: isActiveInHead,
                       line_snippet: codeLine.replace(rawSecret, masked).trim().slice(0, 180),
                       remediation_guide: {
                         provider: rule.name.split(' ')[0],
@@ -160,7 +256,7 @@ export async function scanGitHubRepositoryClientSide(
                     });
                   }
                 }
-              });
+              }
 
               currentLineNum++;
             }
@@ -172,16 +268,20 @@ export async function scanGitHubRepositoryClientSide(
     }
   }
 
-  // De-duplicate findings
-  const uniqueFindings: Finding[] = [];
-  const seenKeys = new Set<string>();
+  // De-duplicate findings (prefer active in HEAD over historical zombie duplicates)
+  const seenMap = new Map<string, Finding>();
   for (const f of allFindings) {
-    const key = `${f.rule_id}-${f.masked_value}-${f.file_path}-${f.commit_short_sha}`;
-    if (!seenKeys.has(key)) {
-      seenKeys.add(key);
-      uniqueFindings.push(f);
+    const key = `${f.rule_id}-${f.masked_value}-${f.file_path}`;
+    if (!seenMap.has(key)) {
+      seenMap.set(key, f);
+    } else {
+      const existing = seenMap.get(key)!;
+      if (f.active_in_head && !existing.active_in_head) {
+        seenMap.set(key, f);
+      }
     }
   }
+  const uniqueFindings = Array.from(seenMap.values());
 
   const critical = uniqueFindings.filter((f) => f.severity === 'CRITICAL').length;
   const high = uniqueFindings.filter((f) => f.severity === 'HIGH').length;

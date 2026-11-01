@@ -27,6 +27,8 @@ class SecretType(str, Enum):
     HUGGINGFACE_TOKEN = "HuggingFace Access Token"
     DISCORD_BOT = "Discord Bot Token"
     JWT_TOKEN = "JSON Web Token (JWT)"
+    VIRUSTOTAL_KEY = "VirusTotal API Key"
+    HEX_API_KEY = "Hexadecimal API Key / Token"
     GENERIC_SECRET = "Generic High-Entropy Credential"
     ENV_VARIABLE = "Hardcoded Environment Credential"
 
