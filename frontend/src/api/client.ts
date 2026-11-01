@@ -7,20 +7,24 @@ import {
   TokenVerificationResult,
   Finding
 } from '../types';
+import { scanContentClientSide } from '../utils/clientScanner';
 
 const API_BASE = '/api';
 
 export async function scanSnippet(code: string, title?: string, filename?: string): Promise<ScanResult> {
-  const res = await fetch(`${API_BASE}/scan/snippet`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ code, title, filename }),
-  });
-  if (!res.ok) {
-    const errorData = await res.json().catch(() => ({}));
-    throw new Error(errorData.detail || 'Failed to scan code snippet.');
+  try {
+    const res = await fetch(`${API_BASE}/scan/snippet`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ code, title, filename }),
+    });
+    if (res.ok) {
+      return await res.json();
+    }
+  } catch (e) {
+    // Backend is offline or running on static host (e.g. Hugging Face Spaces)
   }
-  return res.json();
+  return scanContentClientSide(code, filename || 'code_snippet.txt', title || 'Audited Code');
 }
 
 export async function scanRepository(repo_url: string, max_commits: number = 60): Promise<{ scan_id: string; message: string }> {
@@ -37,16 +41,36 @@ export async function scanRepository(repo_url: string, max_commits: number = 60)
 }
 
 export async function getUserRepositories(username: string, max_repos: number = 20): Promise<GitHubRepoItem[]> {
-  const res = await fetch(`${API_BASE}/scan/user`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ username, max_repos }),
-  });
-  if (!res.ok) {
-    const errorData = await res.json().catch(() => ({}));
-    throw new Error(errorData.detail || 'Failed to fetch repositories for this GitHub profile.');
+  try {
+    const res = await fetch(`${API_BASE}/scan/user`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username, max_repos }),
+    });
+    if (res.ok) {
+      return await res.json();
+    }
+  } catch (e) {
+    // Fallback to direct client-side GitHub REST API
   }
-  return res.json();
+
+  const cleanUser = username.trim().replace(/^@/, '');
+  const ghRes = await fetch(`https://api.github.com/users/${cleanUser}/repos?sort=updated&per_page=${max_repos}`);
+  if (!ghRes.ok) {
+    throw new Error(`Failed to fetch public repositories for GitHub profile @${cleanUser}.`);
+  }
+  const repos = await ghRes.json();
+  return repos.map((item: any) => ({
+    name: item.name,
+    full_name: item.full_name,
+    html_url: item.html_url,
+    description: item.description,
+    fork: item.fork,
+    stars: item.stargazers_count,
+    language: item.language,
+    updated_at: item.updated_at,
+    default_branch: item.default_branch || 'main',
+  }));
 }
 
 export async function getScanResult(scanId: string): Promise<ScanResult> {
@@ -103,15 +127,65 @@ export async function generatePreCommit(
   include_shannon_entropy: boolean = true,
   fail_on_severity: string = 'HIGH'
 ): Promise<PreCommitResponse> {
-  const res = await fetch(`${API_BASE}/precommit/generate`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ rules, include_shannon_entropy, fail_on_severity }),
-  });
-  if (!res.ok) {
-    throw new Error('Failed to generate pre-commit configuration.');
+  try {
+    const res = await fetch(`${API_BASE}/precommit/generate`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ rules, include_shannon_entropy, fail_on_severity }),
+    });
+    if (res.ok) {
+      return await res.json();
+    }
+  } catch (e) {
+    // Client-side fallback
   }
-  return res.json();
+
+  const precommit_yaml = `# SecretShield Pre-Commit Configuration
+repos:
+  - repo: https://github.com/gitleaks/gitleaks
+    rev: v8.18.2
+    hooks:
+      - id: gitleaks
+        name: SecretShield / Gitleaks Secret Detector
+        entry: gitleaks protect --verbose --redact --staged
+        language: golang
+        pass_filenames: false
+
+  - repo: https://github.com/Yelp/detect-secrets
+    rev: v1.5.0
+    hooks:
+      - id: detect-secrets
+        name: SecretShield / Shannon Entropy Scanner
+        args: ['--baseline', '.secrets.baseline']
+
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.6.0
+    hooks:
+      - id: check-added-large-files
+      - id: detect-private-key
+      - id: check-merge-conflict
+      - id: trailing-whitespace
+`;
+
+  const github_actions_workflow = `name: SecretShield CI Audit
+on: [push, pull_request]
+jobs:
+  secret-scan:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: \${{ secrets.GITHUB_TOKEN }}
+`;
+
+  return {
+    precommit_yaml,
+    github_actions_workflow,
+    filename: '.pre-commit-config.yaml'
+  };
 }
 
 export async function getSampleSnippets(): Promise<Record<string, { title: string; filename: string; description: string; content: string }>> {

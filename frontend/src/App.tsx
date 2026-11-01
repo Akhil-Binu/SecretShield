@@ -23,6 +23,7 @@ import {
   getScanResult,
   subscribeScanEvents
 } from './api/client';
+import { scanGitHubRepositoryClientSide } from './utils/clientGitScanner';
 import { CLIENT_DEMO_SNIPPETS } from './utils/sampleData';
 import { AlertCircle, Shield, Sparkles } from 'lucide-react';
 
@@ -83,37 +84,53 @@ export function App() {
     setIsLoading(true);
     setErrorMsg(null);
     setScanResult(null);
-    try {
-      const initResp = await scanRepository(repoUrl, maxCommits);
-      const scanId = initResp.scan_id;
 
-      // Subscribe to Server-Sent Events (SSE) for live streaming progress
-      const cleanup = subscribeScanEvents(
-        scanId,
-        (progress) => {
-          setScanProgress(progress);
-        },
-        async () => {
-          // Completed: fetch final result
-          try {
-            const finalRes = await getScanResult(scanId);
-            setScanResult(finalRes);
-          } catch (e: any) {
-            setErrorMsg('Failed to load final scan findings.');
-          } finally {
+    // If backend is active, try backend asynchronous worker scan
+    if (isBackendHealthy) {
+      try {
+        const initResp = await scanRepository(repoUrl, maxCommits);
+        const scanId = initResp.scan_id;
+
+        // Subscribe to Server-Sent Events (SSE) for live streaming progress
+        subscribeScanEvents(
+          scanId,
+          (progress) => {
+            setScanProgress(progress);
+          },
+          async () => {
+            try {
+              const finalRes = await getScanResult(scanId);
+              setScanResult(finalRes);
+            } catch (e: any) {
+              setErrorMsg('Failed to load final scan findings.');
+            } finally {
+              setIsLoading(false);
+              setScanProgress(null);
+            }
+          },
+          (error) => {
+            setErrorMsg(error);
             setIsLoading(false);
             setScanProgress(null);
           }
-        },
-        (error) => {
-          setErrorMsg(error);
-          setIsLoading(false);
-          setScanProgress(null);
-        }
-      );
+        );
+        return;
+      } catch (err) {
+        // Fall back to client-side git scanner below
+      }
+    }
+
+    // Client-side Git scanner (runs directly in browser on Hugging Face Spaces)
+    try {
+      const res = await scanGitHubRepositoryClientSide(repoUrl, maxCommits, (prog) => {
+        setScanProgress(prog);
+      });
+      setScanResult(res);
     } catch (err: any) {
-      setErrorMsg(err.message || 'Failed to start repository scan.');
+      setErrorMsg(err.message || 'Failed to scan repository.');
+    } finally {
       setIsLoading(false);
+      setScanProgress(null);
     }
   };
 
