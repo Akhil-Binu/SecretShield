@@ -2,87 +2,175 @@
 title: SecretShield
 emoji: 🛡️
 colorFrom: blue
-colorTo: cyan
-sdk: docker
-app_port: 7860
+colorTo: purple
+sdk: static
 pinned: false
 ---
 
 # 🛡️ SecretShield — Instant Git Secret & API Key Leak Auditor
 
-> **Shift-Left Application Security (AppSec) & DevSecOps Platform**  
-> Audit Git commit histories, repositories, user profiles, and configuration blocks for exposed AWS credentials, OpenAI keys, Stripe secrets, private keys, and database connection strings using a dual-engine architecture: **Deterministic Regex + Shannon Entropy ($H$) Heuristics**.
+<div align="center">
+
+[![Live Demo: Hugging Face Spaces](https://img.shields.io/badge/Live%20Demo-Hugging%20Face%20Spaces-FFD21E.svg?style=for-the-badge&logo=huggingface&logoColor=black)](https://huggingface.co/spaces/akhilbinu/secretshield)
+[![Direct App](https://img.shields.io/badge/Web%20App-Direct%20Access-06B6D4.svg?style=for-the-badge&logo=fastapi&logoColor=white)](https://akhilbinu-secretshield.static.hf.space)
+[![GitHub Repository](https://img.shields.io/badge/GitHub-Akhil--Binu%2FSecretShield-181717.svg?style=for-the-badge&logo=github&logoColor=white)](https://github.com/Akhil-Binu/SecretShield)
+[![License: MIT](https://img.shields.io/badge/License-MIT-green.svg?style=for-the-badge)](LICENSE)
+
+<p align="center">
+  <b>Shift-Left Application Security (AppSec) & DevSecOps Platform</b><br>
+  Audit public GitHub repositories, commit histories, user profiles, and raw configuration blocks for exposed API keys, cloud tokens, database connection strings, and private keys before attackers exploit them.
+</p>
+
+</div>
 
 ---
 
-## 🌟 The Real-World Problem & Solution
+## 🌟 The Real-World Problem
 
-Developers frequently commit `.env` files, API credentials, and database connection strings to public repositories. When they realize the mistake, they often commit an update removing the key—**leaving the credential permanently exposed in git history (`git log`) where automated scanners and threat actors harvest it**.
+Developers constantly leak cloud credentials, OpenAI keys, VirusTotal tokens, database connection strings, and `.env` files into public GitHub repositories. When developers realize the mistake, they typically commit a quick fix removing the key—**leaving the credential permanently accessible in past Git commit history (`git log`, `git show`) where automated attacker bots harvest it within seconds**.
 
-**SecretShield solves this by:**
-1. **Three Scanning Interfaces:**
-   - **Public GitHub Repository URL:** Clones repository, extracts patch diffs (`git log`, `git show`), and analyzes commit trees for secrets.
-   - **GitHub User / Org Profile:** Leverages GitHub REST API to discover public repositories with star counts, languages, and 1-click audit buttons.
-   - **Raw Code & Config Paste:** Instant synchronous auditing of pasted `.env`, YAML, Python, or shell scripts.
-2. **Dual-Engine Detection:**
-   - **High-Fidelity Regex Catalog:** 20+ pre-compiled pattern rules covering AWS, OpenAI, Anthropic, Gemini, Stripe, GitHub PATs, Slack, HuggingFace, DB URIs, and Private Keys.
-   - **Shannon Entropy Analysis:** Computes $H(X) = -\sum P(x)\log_2 P(x)$ to catch unidentified high-entropy random cryptographic tokens and passwords that bypass static regex.
-3. **Leak Severity & Exposure Dashboard:**
-   - Calculates a 0–100 **Security Health Index** score with severity penalty weighting.
-   - Categorizes findings by **CRITICAL**, **HIGH**, **MEDIUM**, and **LOW** risk.
-   - **Historical "Zombie" Secret Detection:** Flags whether a secret is active in the latest HEAD or has been deleted in newer commits yet remains accessible in past git objects!
-4. **1-Click Revocation & Rotation Guides:**
-   - Vendor-specific rotation links (AWS IAM, OpenAI Platform, Stripe Dashboard, GitHub Settings).
-   - Copy-paste terminal remediation commands (`aws iam delete-access-key`, Stripe CLI, DB password changes).
-   - Git History Eradication commands (`git filter-repo`) to purge leaked secrets from history before force-pushing.
-5. **Downloadable `.pre-commit-config.yaml` & CI Pipeline:**
-   - Generates custom pre-commit hooks (Gitleaks, Yelp detect-secrets, `.env` file blocker) tailored to detected risks.
-   - Generates `.github/workflows/secret-scan.yml` to prevent future leaks in pull requests.
+Most traditional secret scanners (like TruffleHog or Gitleaks) are command-line-only utilities that developers and security analysts find difficult to configure and visualize.
+
+### The SecretShield Solution
+SecretShield provides an **instant, zero-installation web interface** powered by a **Dual-Engine Architecture**:
+1. **Deterministic High-Fidelity Regex Catalog:** 22+ rules covering major cloud, AI, and threat intelligence providers.
+2. **Shannon Entropy ($H$) Heuristics:** Mathematical randomness calculation ($H \ge 3.65$) catching obfuscated, high-entropy tokens and passwords that bypass standard static regex.
+3. **Dual-Mode Deployment:** Runs either as a full **FastAPI + Celery/Redis** server backend or as a **100% Browser-Native Static App** hosted freely on platforms like Hugging Face Spaces and GitHub Pages!
 
 ---
 
-## 🏗️ Architecture & Tech Stack
+## 🚀 Live Deployments
+
+| Environment | URL | Engine | Status |
+| :--- | :--- | :--- | :--- |
+| **Hugging Face Spaces** | [huggingface.co/spaces/akhilbinu/secretshield](https://huggingface.co/spaces/akhilbinu/secretshield) | Browser Engine (`sdk: static`) | 🟢 Live (24/7 Always-On) |
+| **Direct Web App** | [akhilbinu-secretshield.static.hf.space](https://akhilbinu-secretshield.static.hf.space) | Browser Engine | 🟢 Live |
+| **Local Deployment** | `http://127.0.0.1:5173` | FastAPI + React (Dual) | 💻 Developer Setup |
+
+---
+
+## 🔑 Core Features
+
+### 1. Multi-Mode Ingestion
+- **Public Git Repository Audit:** Enter any GitHub repository URL (e.g. `https://github.com/owner/repo` or `owner/repo`) with configurable commit history depth (20, 50, or 100 commits).
+- **Dedicated Credential Files Audit in HEAD:** Directly checks root key files (`VirusTotal_APIKey.txt`, `api_key.txt`, `.env*`, `config.json`, etc.) in the active repository tree.
+- **GitHub User & Organization Discovery:** Enter any GitHub handle (e.g. `@octocat`, `@torvalds`) to list all public repositories with language tags, star counts, and 1-click audit triggers.
+- **Instant Code & Config Paste:** Audit `.env`, YAML, Python, Bash, or JSON snippets with zero latency.
+- **Drag-and-Drop File Upload:** Inspect local configuration files before committing to Git.
+
+### 2. Historical "Zombie Secret" Detection
+- Distinguishes between **🔴 Active Secrets in HEAD** (credentials currently live in the codebase) and **⚠️ Zombie Secrets** (credentials removed in `HEAD`, but permanently exposed in Git commit history objects).
+- Ground-truth verified against raw repository content so developers can accurately triage leak exposure.
+
+### 3. Leak Severity & Health Index Dashboard
+- **0–100 Security Health Index:** Dynamic score penalizing repositories based on leak severity (Critical: -25, High: -15, Medium: -7, Low: -2).
+- **Safe Token Masking:** All secrets are masked (`AKIAIOSFODNN7E*******`, `8ccdaca0...********...12bb`) to prevent accidental shoulder surfing or secondary leaks.
+- **Interactive Commit Timeline:** Visual DAG commit path displaying exact commit SHAs, author names, timestamps, and commit messages for every finding.
+
+### 4. 1-Click Remediation & Eradication Guides
+- **Vendor-Specific Rotation Guides:** Direct console links to AWS IAM, OpenAI Platform, VirusTotal User Settings, Stripe Dashboard, Anthropic Console, and GitHub Tokens.
+- **Git History Purge Generator:** Generates automated `git filter-repo` shell and PowerShell scripts (`purge_secrets.sh`, `purge_secrets.ps1`) to eradicate leaked files across all commit branches before force-pushing.
+- **Non-Destructive Live Probes:** Probes token validity (GitHub PAT `/user`, VirusTotal `/v3/users/me`, OpenAI `/v1/models`, Hugging Face `/whoami-v2`, Slack `/auth.test`, Stripe `/v1/balance`).
+
+### 5. Shift-Left Prevention Tools
+- **Dynamic `.pre-commit-config.yaml` Generator:** Generates a custom pre-commit hook configuration tailored to the specific leak types found in the audit.
+- **Yelp detect-secrets Baseline Exporter:** Generates `.secrets.baseline` files to easily baseline existing projects without breaking CI pipelines.
+- **Automated CI/CD Workflow:** Generates `.github/workflows/secret-scan.yml` to block secret leaks on Pull Requests.
+- **Multi-Format Advisory Exporter:** 1-click download of findings as **JSON**, **CSV** (for spreadsheets), or **Markdown Executive Security Advisory**.
+
+### 6. GitHub Personal Access Token (PAT) Manager
+- Built-in GitHub Token configuration modal with live capacity monitor (`60 req/hr` unauthenticated vs `5,000 req/hr` authenticated).
+- **Zero-knowledge:** Stored strictly in the browser's `localStorage` and sent directly to `api.github.com`. No server storage.
+- Requires **zero scopes** for public repo audits.
+
+---
+
+## 🛡️ Supported Detection Rules Catalog
+
+SecretShield includes 22+ high-fidelity detection rules with calibrated Shannon entropy thresholds:
+
+| Provider | Pattern / Rule Name | Severity | Min Entropy |
+| :--- | :--- | :---: | :---: |
+| **AWS** | AWS Access Key ID (`AKIA...`, `ASIA...`) | `CRITICAL` | 2.8 bits |
+| **AWS** | AWS Secret Access Key (`40-char base64`) | `CRITICAL` | 4.0 bits |
+| **OpenAI** | OpenAI API Key (`sk-proj-...`, `sk-...`) | `CRITICAL` | 3.8 bits |
+| **Anthropic** | Anthropic Claude Key (`sk-ant-...`) | `CRITICAL` | 3.8 bits |
+| **Google Cloud** | Gemini & GCP API Key (`AIza...`) | `HIGH` | 3.8 bits |
+| **VirusTotal** | Threat Intelligence API Key (`64-hex`) | `CRITICAL` | 3.5 bits |
+| **GitHub** | Classic Personal Access Token (`ghp_...`) | `CRITICAL` | 3.8 bits |
+| **GitHub** | Fine-Grained Token (`github_pat_...`) | `CRITICAL` | 4.0 bits |
+| **GitHub** | OAuth & App Tokens (`gho_`, `ghu_`, `ghs_`) | `HIGH` | 3.8 bits |
+| **Stripe** | Secret / Restricted Key (`sk_live_...`, `rk_live_...`) | `CRITICAL` | 3.7 bits |
+| **Databases** | Postgres, MySQL, MongoDB, Redis, MSSQL URIs | `CRITICAL` | 2.8 bits |
+| **Crypto** | RSA, OpenSSH, EC Private Key Blocks | `CRITICAL` | 2.5 bits |
+| **Slack** | Bot & User OAuth Tokens (`xoxb-...`, `xoxp-...`) | `HIGH` | 3.5 bits |
+| **Hugging Face** | User Access Token (`hf_...`) | `HIGH` | 3.8 bits |
+| **Twilio** | Account SID & Auth Token (`AC...`) | `HIGH` | 3.2 bits |
+| **SendGrid** | Mail API Key (`SG...`) | `HIGH` | 4.1 bits |
+| **Discord** | Bot Authorization Token | `HIGH` | 4.0 bits |
+| **Security** | Generic Hexadecimal API Key (`32–64 hex`) | `HIGH` | 3.3 bits |
+| **Auth** | Signed JSON Web Tokens (`eyJ...`) | `MEDIUM` | 4.2 bits |
+| **Config** | Hardcoded Password Assignment in `.env` | `HIGH` | 3.2 bits |
+
+---
+
+## 🧮 Shannon Entropy Formula
+
+Shannon entropy measures the uncertainty or information density in an arbitrary sequence of characters:
+
+$$H(X) = -\sum_{i=1}^{n} P(x_i) \log_2 P(x_i)$$
+
+Where:
+- $n$ is the number of distinct characters in the token.
+- $P(x_i)$ is the probability (relative frequency) of character $x_i$.
+- Natural English and code variables average **2.0 – 3.2 bits/symbol**.
+- Cryptographic keys, API tokens, and secure passwords score **≥ 3.65 – 5.5 bits/symbol**.
+
+---
+
+## 🏗️ Architecture
 
 ```mermaid
 flowchart TD
-    User["Developer / AppSec Auditor"] --> UI["Next.js / Vite React Dashboard"]
-    UI --> API["FastAPI REST & SSE Service"]
+    User["Developer / AppSec Auditor"] --> UI["React 18 + Vite + Tailwind Dashboard"]
     
-    subgraph "Scanning Engine"
-        API --> Engine["SecretScanner"]
-        Engine --> Regex["Deterministic Regex Catalog (20+ Providers)"]
-        Engine --> Entropy["Shannon Entropy Analyzer H(X) >= 3.65"]
-        Engine --> Masker["Safe Secret Masker & Preview"]
+    subgraph "Deployment Layer"
+        UI -->|Cloud / HF Spaces| BrowserEngine["Browser-Native TypeScript Scanner"]
+        UI -->|Local / Enterprise| FastAPIEngine["Python 3.14 FastAPI REST & SSE Service"]
     end
 
-    subgraph "Background Task Pipeline"
-        API --> Queue["Async Worker / Celery Task Queue"]
-        Queue --> GitEngine["GitEngine (Isolated Sandbox Clone)"]
-        GitEngine --> DiffParser["Git Log & Commit Diff Traverser"]
-        DiffParser --> ZombieDetector["Zombie / Historical Leak Checker"]
-        API --> GitHubAPI["GitHub REST API (Repo & User Discovery)"]
+    subgraph "Dual Scanning Engines"
+        BrowserEngine --> RegexEngine["Pre-Compiled Regex Rules (22+ Providers)"]
+        BrowserEngine --> EntropyEngine["Client Shannon Entropy Math H(X) >= 3.65"]
+        FastAPIEngine --> ServerRegex["Python Multi-Pattern Regex Engine"]
+        FastAPIEngine --> ServerEntropy["Python Shannon Entropy Analyzer"]
     end
 
-    subgraph "Remediation & Export"
-        Engine --> Report["JSON / CSV / Markdown Advisories"]
-        Engine --> Revocation["1-Click Vendor Revocation Guides"]
-        Engine --> PreCommit[".pre-commit-config.yaml & CI Workflow"]
+    subgraph "Git Commit & History Traverser"
+        BrowserEngine --> GH_API["GitHub REST API (Commits, Diffs, Profiles)"]
+        BrowserEngine --> RawCDN["raw.githubusercontent.com (HEAD Verification)"]
+        FastAPIEngine --> GitSandbox["Isolated Sandbox Clone (git log -p)"]
+    end
+
+    subgraph "Output & Remediation"
+        RegexEngine & EntropyEngine --> Dashboard["Leak Severity & Exposure Dashboard"]
+        ServerRegex & ServerEntropy --> Dashboard
+        Dashboard --> FixPlan["1-Click Vendor Revocation & Rotation Guides"]
+        Dashboard --> GitPurge["git-filter-repo Eradication Scripts"]
+        Dashboard --> PreCommit[".pre-commit-config.yaml & CI Workflows"]
+        Dashboard --> Reports["JSON / CSV / Markdown Advisories"]
     end
 ```
-
-- **Backend:** Python 3.14+, FastAPI, Uvicorn, Pydantic, HTTPX, SSE-Starlette, Celery & Redis task architecture.
-- **Frontend:** React 18, TypeScript, Vite, Tailwind CSS, Lucide Icons, Server-Sent Events (SSE) streaming progress.
-- **Security:** Zero plaintext secret exposure in logs or UI; all tokens are safely masked (`AKIAIOSFODNN7E*******`).
 
 ---
 
-## 🚀 Quick Start
+## 💻 Local Development Setup
 
-### 1. Automatic One-Click Launch (Windows PowerShell)
+### 1. One-Click Startup (PowerShell)
 ```powershell
 .\start.ps1
 ```
-This script initializes the Python virtual environment, installs dependencies, and launches both backend and frontend servers.
+This script automatically sets up the Python virtual environment, installs backend and frontend dependencies, and boots both servers concurrently.
 
 ### 2. Manual Startup
 
@@ -93,7 +181,7 @@ python -m venv .venv
 .\.venv\Scripts\pip install -r requirements.txt
 .\.venv\Scripts\python -m uvicorn app.main:app --host 127.0.0.1 --port 8000 --reload
 ```
-API Documentation will be live at: **http://127.0.0.1:8000/docs**
+* Interactive API Documentation (Swagger / OpenAPI): **http://127.0.0.1:8000/docs**
 
 #### Frontend (Terminal 2)
 ```powershell
@@ -101,66 +189,28 @@ cd frontend
 npm install
 npm run dev -- --host 127.0.0.1 --port 5173
 ```
-Dashboard will be live at: **http://127.0.0.1:5173**
-
-### 3. Deploy to Hugging Face Spaces (100% Free, 16 GB RAM, Always-On)
-
-SecretShield is pre-configured with Hugging Face Space Docker metadata.
-
-1. Go to [Hugging Face Spaces](https://huggingface.co/spaces) and click **Create new Space**.
-2. Set:
-   - **Space Name:** `secretshield`
-   - **License:** `apache-2.0` or `mit`
-   - **Space SDK:** Choose **Docker** -> **Blank**
-   - **Space Hardware:** Free (2 vCPU, 16 GB RAM)
-3. Clone your new Space repository or add it as a git remote:
-   ```bash
-   git remote add space https://huggingface.co/spaces/<YOUR-USERNAME>/secretshield
-   git push space master:main
-   ```
-4. Hugging Face automatically detects the Dockerfile, installs Git and Python dependencies, builds the Vite frontend, and starts the service on port `7860`.
-5. Your auditor will be live 24/7 with zero spin-down at: `https://huggingface.co/spaces/<YOUR-USERNAME>/secretshield`
+* Live Application Dashboard: **http://127.0.0.1:5173**
 
 ---
 
-## 🧪 Running Unit Tests
+## 🧪 Testing
 
-Run the backend test suite:
+Run the automated backend pytest suite:
 ```powershell
 cd backend
 .\.venv\Scripts\python -m pytest tests
 ```
-Tests cover:
-- Shannon Entropy mathematical boundary calculations
-- Regex rule matches (AWS, OpenAI, Anthropic, Stripe, DB URIs)
-- Secret masking and end-to-end scanner pipeline
+
+Run frontend production build verification:
+```powershell
+cd frontend
+npm run build
+```
 
 ---
 
-## 📊 API Reference
+## 📄 License
 
-| Method | Endpoint | Description |
-| :--- | :--- | :--- |
-| `POST` | `/api/scan/snippet` | Synchronous scan of code / config snippets |
-| `POST` | `/api/scan/repo` | Asynchronous background cloning & git commit audit |
-| `POST` | `/api/scan/user` | Fetch public repositories for a GitHub user/organization |
-| `GET` | `/api/scan/{scan_id}` | Retrieve full audit findings and summary metrics |
-| `GET` | `/api/scan/{scan_id}/progress` | Retrieve current status and progress percentage |
-| `GET` | `/api/scan/{scan_id}/events` | Server-Sent Events (SSE) live progress stream |
-| `POST` | `/api/precommit/generate` | Generate `.pre-commit-config.yaml` & GitHub Actions CI workflow |
-| `GET` | `/api/scan/{scan_id}/export/{format}` | Export report as `json`, `csv`, or `markdown` advisory |
-| `GET` | `/api/health` | Service health status |
+Distributed under the **MIT License**. See [`LICENSE`](LICENSE) for more information.
 
----
-
-## 🛡️ Shannon Entropy Formula
-
-Shannon entropy measures the uncertainty or information density in a sequence of characters:
-
-$$H(X) = -\sum_{i=1}^{n} P(x_i) \log_2 P(x_i)$$
-
-Where:
-- $n$ is the number of distinct characters in the token.
-- $P(x_i)$ is the probability (relative frequency) of character $x_i$.
-- Natural English and code variables average **2.0 – 3.2 bits/symbol**.
-- Cryptographic keys and random API tokens score **≥ 3.65 – 5.5 bits/symbol**.
+Developed by **[Akhil Binu](https://github.com/Akhil-Binu)**.
