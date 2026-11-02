@@ -33,7 +33,8 @@ import { AlertCircle, Shield, Sparkles } from 'lucide-react';
 const isStaticHost = typeof window !== 'undefined' && (
   window.location.hostname.includes('hf.space') ||
   window.location.hostname.includes('huggingface.co') ||
-  window.location.hostname.includes('github.io')
+  window.location.hostname.includes('github.io') ||
+  window.location.hostname.includes('vercel.app')
 );
 
 export function App() {

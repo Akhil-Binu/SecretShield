@@ -11,8 +11,8 @@ pinned: false
 
 <div align="center">
 
+[![Live on Vercel](https://img.shields.io/badge/Production-Vercel-000000.svg?style=for-the-badge&logo=vercel&logoColor=white)](https://secretshield-five.vercel.app)
 [![Live Demo: Hugging Face Spaces](https://img.shields.io/badge/Live%20Demo-Hugging%20Face%20Spaces-FFD21E.svg?style=for-the-badge&logo=huggingface&logoColor=black)](https://huggingface.co/spaces/akhilbinu/secretshield)
-[![Direct App](https://img.shields.io/badge/Web%20App-Direct%20Access-06B6D4.svg?style=for-the-badge&logo=fastapi&logoColor=white)](https://akhilbinu-secretshield.static.hf.space)
 [![GitHub Repository](https://img.shields.io/badge/GitHub-Akhil--Binu%2FSecretShield-181717.svg?style=for-the-badge&logo=github&logoColor=white)](https://github.com/Akhil-Binu/SecretShield)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg?style=for-the-badge)](LICENSE)
 
@@ -43,8 +43,9 @@ SecretShield provides an **instant, zero-installation web interface** powered by
 
 | Environment | URL | Engine | Status |
 | :--- | :--- | :--- | :--- |
-| **Hugging Face Spaces** | [huggingface.co/spaces/akhilbinu/secretshield](https://huggingface.co/spaces/akhilbinu/secretshield) | Browser Engine (`sdk: static`) | 🟢 Live (24/7 Always-On) |
-| **Direct Web App** | [akhilbinu-secretshield.static.hf.space](https://akhilbinu-secretshield.static.hf.space) | Browser Engine | 🟢 Live |
+| **Vercel Production** | [secretshield-five.vercel.app](https://secretshield-five.vercel.app) | Global Edge CDN + Browser Engine | 🟢 Live (Production) |
+| **Hugging Face Spaces** | [huggingface.co/spaces/akhilbinu/secretshield](https://huggingface.co/spaces/akhilbinu/secretshield) | Static Space (`sdk: static`) | 🟢 Live (24/7 Always-On) |
+| **Direct App (HF)** | [akhilbinu-secretshield.static.hf.space](https://akhilbinu-secretshield.static.hf.space) | Browser Engine | 🟢 Live |
 | **Local Deployment** | `http://127.0.0.1:5173` | FastAPI + React (Dual) | 💻 Developer Setup |
 
 ---
